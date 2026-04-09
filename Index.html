@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2025 Masters Bracket — Pick Distribution & Surprises</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Georgia', serif; background: #0a1a0a; color: #e8e0d0; min-height: 100vh; }
+
+header {
+  background: linear-gradient(135deg, #1a3a1a 0%, #0d2b0d 50%, #1a3a1a 100%);
+  border-bottom: 3px solid #c9a84c;
+  padding: 28px 40px 20px;
+  text-align: center;
+  position: relative;
+}
+header h1 { font-size: 2.2rem; color: #c9a84c; letter-spacing: 4px; text-transform: uppercase; }
+header h1 span { color: #e8e0d0; }
+header p { margin-top: 6px; font-size: 0.88rem; color: #9aaa8a; letter-spacing: 2px; }
+
+.tab-nav {
+  display: flex; justify-content: center; background: #0d1f0d;
+  border-bottom: 2px solid #1e3a1e; overflow-x: auto; padding: 0 20px;
+}
+.tab-btn {
+  padding: 13px 20px; border: none; background: transparent; color: #7a9a6a;
+  font-family: 'Georgia', serif; font-size: 0.82rem; letter-spacing: 1.5px;
+  text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent;
+  transition: all 0.2s; white-space: nowrap;
+}
+.tab-btn:hover { color: #c9a84c; background: #0f250f; }
+.tab-btn.active { color: #c9a84c; border-bottom-color: #c9a84c; background: #0f250f; }
+
+.content { max-width: 1140px; margin: 0 auto; padding: 32px 20px; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.stat-row { display: flex; gap: 14px; margin-bottom: 28px; flex-wrap: wrap; }
+.stat-chip { background: #0d1f0d; border: 1px solid #1e3a1e; border-radius: 3px; padding: 12px 18px; }
+.stat-chip .val { font-size: 1.45rem; color: #c9a84c; }
+.stat-chip .lbl { font-size: 0.7rem; color: #5a7a5a; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+
+.section-title {
+  font-size: 0.72rem; letter-spacing: 3px; text-transform: uppercase;
+  color: #5a7a5a; margin-bottom: 14px; border-bottom: 1px solid #1e3a1e; padding-bottom: 8px;
+}
+
+.card { background: #0d1f0d; border: 1px solid #1e3a1e; border-radius: 4px; padding: 22px; margin-bottom: 24px; }
+.card h3 { font-size: 0.78rem; letter-spacing: 2px; text-transform: uppercase; color: #7a9a6a; margin-bottom: 18px; }
+
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 24px; }
+@media (max-width: 740px) { .chart-grid { grid-template-columns: 1fr; } }
+
+.chart-wrap { position: relative; }
+
+/* -------- Scatter quadrant labels -------- */
+.scatter-container { position: relative; }
+.quadrant-label {
+  position: absolute; font-size: 0.65rem; letter-spacing: 1.5px; text-transform: uppercase;
+  opacity: 0.45; pointer-events: none; font-weight: bold;
+}
+.ql-tl { top: 8px; left: 12px; color: #c9a84c; }   /* high pick, good score = crowd fav */
+.ql-tr { top: 8px; right: 12px; color: #c04040; }   /* low pick, good score = hidden gem */
+.ql-bl { bottom: 8px; left: 12px; color: #4a9a4a; } /* high pick, bad score = trap */
+.ql-br { bottom: 8px; right: 12px; color: #888; }   /* low pick, bad score = neutral */
+
+/* -------- Surprise cards -------- */
+.surprise-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+@media (max-width: 680px) { .surprise-grid { grid-template-columns: 1fr; } }
+
+.surprise-section h4 {
+  font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #1e3a1e;
+}
+.surprise-section.traps h4 { color: #c04040; }
+.surprise-section.gems h4 { color: #4aba4a; }
+
+.surprise-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 14px; margin-bottom: 8px;
+  background: #0a160a; border: 1px solid #1a2e1a; border-radius: 3px;
+}
+.surprise-item.trap { border-left: 3px solid #c04040; }
+.surprise-item.gem  { border-left: 3px solid #4aba4a; }
+.si-rank { font-size: 1.1rem; color: #3a6a3a; font-weight: bold; min-width: 22px; }
+.si-info { flex: 1; }
+.si-name { font-size: 0.88rem; color: #e8e0d0; margin-bottom: 3px; }
+.si-name .badge {
+  display: inline-block; font-size: 0.58rem; letter-spacing: 1px; padding: 2px 5px;
+  border-radius: 2px; margin-left: 6px; vertical-align: middle; font-weight: bold;
+}
+.badge-winner { background: #c9a84c; color: #0a1a0a; }
+.badge-group { background: #1e3a1e; color: #7aaa7a; }
+.si-meta { font-size: 0.75rem; color: #5a7a5a; }
+.si-meta span { margin-right: 12px; }
+.si-meta .picked { color: #9aaa8a; }
+.si-meta .score-good { color: #4aba4a; }
+.si-meta .score-bad  { color: #c04040; }
+.si-gap { text-align: right; font-size: 0.75rem; color: #5a7a5a; }
+.si-gap .arrow { font-size: 1.1rem; }
+.si-gap .arrow.up   { color: #4aba4a; }
+.si-gap .arrow.down { color: #c04040; }
+
+/* -------- Bar list -------- */
+.bar-list { display: flex; flex-direction: column; gap: 9px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label { font-size: 0.76rem; color: #c8c0b0; min-width: 155px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { flex: 1; background: #1a2e1a; border-radius: 2px; height: 20px; position: relative; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 2px; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; transition: width 0.5s ease; }
+.bar-fill.f-gold   { background: linear-gradient(90deg, #a07830, #c9a84c); }
+.bar-fill.f-green  { background: linear-gradient(90deg, #2a6a2a, #4a9a4a); }
+.bar-fill.f-red    { background: linear-gradient(90deg, #8a1a1a, #c04040); }
+.bar-fill.f-dim    { background: linear-gradient(90deg, #2a3a2a, #3a5a3a); }
+.bar-fill.f-winner { background: linear-gradient(90deg, #c9a84c, #ffd700); }
+.bar-pct { font-size: 0.68rem; color: #0a1a0a; font-weight: bold; }
+.bar-score { font-size: 0.7rem; min-width: 28px; text-align: center; }
+.bar-score.good { color: #4aba4a; }
+.bar-score.bad  { color: #c04040; }
+.bar-score.even { color: #9aaa8a; }
+
+/* -------- Donut -------- */
+.donut-wrap { position: relative; height: 270px; }
+
+/* -------- Overview mini cards -------- */
+.ov-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 28px; }
+@media (max-width: 860px) { .ov-grid { grid-template-columns: repeat(3,1fr); } }
+.mini-card { background: #0d1f0d; border: 1px solid #1e3a1e; border-radius: 4px; padding: 16px 12px; cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
+.mini-card:hover { border-color: #c9a84c; transform: translateY(-2px); }
+.mini-card .gc { font-size: 0.68rem; letter-spacing: 2px; text-transform: uppercase; color: #c9a84c; margin-bottom: 8px; }
+.mini-top { font-size: 0.85rem; color: #e8e0d0; margin-bottom: 3px; }
+.mini-pct { font-size: 1.3rem; color: #4a9a4a; font-weight: bold; }
+.mini-score { font-size: 0.75rem; margin-top: 4px; }
+
+.legend-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 10px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #9aaa8a; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>2025 Masters <span>Bracket Challenge</span></h1>
+  <p>Pick Distribution · Performance · Surprises &nbsp;·&nbsp; 2,657 Entries</p>
+</header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active"  onclick="showTab('overview')">Overview</button>
+  <button class="tab-btn" onclick="showTab('surprises')">🔥 Surprises</button>
+  <button class="tab-btn" onclick="showTab('g1')">Group 1</button>
+  <button class="tab-btn" onclick="showTab('g2')">Group 2</button>
+  <button class="tab-btn" onclick="showTab('g3')">Group 3</button>
+  <button class="tab-btn" onclick="showTab('g4')">Group 4</button>
+  <button class="tab-btn" onclick="showTab('g5')">Group 5</button>
+</nav>
+
+<div class="content">
+
+<!-- ===== OVERVIEW ===== -->
+<div id="overview" class="panel active">
+  <div class="stat-row">
+    <div class="stat-chip"><div class="val">2,657</div><div class="lbl">Total Entries</div></div>
+    <div class="stat-chip"><div class="val">80</div><div class="lbl">Unique Players</div></div>
+    <div class="stat-chip"><div class="val" style="color:#4aba4a">Rory McIlroy</div><div class="lbl">Winner · only 6.8% picked him</div></div>
+    <div class="stat-chip"><div class="val" style="color:#c04040">Akshay Bhatia</div><div class="lbl">Biggest trap · 31.4% picked, +1</div></div>
+  </div>
+
+  <p class="section-title">Most picked player per group</p>
+  <div class="ov-grid">
+    <div class="mini-card" onclick="showTab('g1')">
+      <div class="gc">Group 1</div>
+      <div class="mini-top">Scottie Scheffler</div>
+      <div class="mini-pct">29.1%</div>
+      <div class="mini-score" style="color:#4aba4a">Score: -3 ✓ Delivered</div>
+    </div>
+    <div class="mini-card" onclick="showTab('g2')">
+      <div class="gc">Group 2</div>
+      <div class="mini-top">Cameron Young</div>
+      <div class="mini-pct">23.4%</div>
+      <div class="mini-score" style="color:#c04040">Score: +1 ✗ Let down</div>
+    </div>
+    <div class="mini-card" onclick="showTab('g3')">
+      <div class="gc">Group 3</div>
+      <div class="mini-top">Hideki Matsuyama</div>
+      <div class="mini-pct">24.7%</div>
+      <div class="mini-score" style="color:#9aaa8a">Score: E Neutral</div>
+    </div>
+    <div class="mini-card" onclick="showTab('g4')">
+      <div class="gc">Group 4</div>
+      <div class="mini-top">Akshay Bhatia</div>
+      <div class="mini-pct" style="color:#c04040">31.4%</div>
+      <div class="mini-score" style="color:#c04040">Score: +1 ✗ Biggest trap</div>
+    </div>
+    <div class="mini-card" onclick="showTab('g5')">
+      <div class="gc">Group 5</div>
+      <div class="mini-top">Corey Conners</div>
+      <div class="mini-pct">15.4%</div>
+      <div class="mini-score" style="color:#c04040">Score: +3 ✗ Let down</div>
+    </div>
+  </div>
+
+  <p class="section-title">All players: popularity vs. score (every group combined)</p>
+  <div class="card">
+    <h3>Scatter — Pick % vs. Final Score · hover for details</h3>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div>Popular + performed (crowd fav)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4aba4a"></div>Underdog + performed (hidden gem)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#c04040"></div>Popular + flopped (trap)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4a5a4a"></div>Unpopular + flopped</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ffd700; border:2px solid #c9a84c"></div>WINNER</div>
+    </div>
+    <div class="chart-wrap" style="height:420px"><canvas id="scatterAll"></canvas></div>
+  </div>
+</div>
+
+<!-- ===== SURPRISES ===== -->
+<div id="surprises" class="panel">
+  <p class="section-title" style="margin-bottom:20px">Biggest gaps between popularity and actual performance</p>
+
+  <div class="surprise-grid">
+    <div class="surprise-section traps">
+      <h4>🚨 Biggest Traps — Overpicked &amp; Underperformed</h4>
+      <div id="trapList"></div>
+    </div>
+    <div class="surprise-section gems">
+      <h4>💎 Hidden Gems — Underpicked &amp; Overdelivered</h4>
+      <div id="gemList"></div>
+    </div>
+  </div>
+
+  <p class="section-title">Popularity rank vs. score rank — gap per group</p>
+  <div class="card">
+    <h3>Rank gap chart (positive = picked higher than scored, negative = undervalued)</h3>
+    <div class="chart-wrap" style="height:380px"><canvas id="gapChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ===== GROUP PANELS ===== -->
+<div id="g1" class="panel"><div class="group-hdr"></div>
+  <div class="chart-grid">
+    <div class="card"><h3>Pick Share</h3><div class="donut-wrap"><canvas id="g1d"></canvas></div></div>
+    <div class="card"><h3>Pick % vs. Score</h3><div class="chart-wrap" style="height:270px"><canvas id="g1s"></canvas></div></div>
+  </div>
+  <div class="card"><h3>All Players — Pick % (bar) · Score (label)</h3><div class="bar-list" id="g1b"></div></div>
+</div>
+
+<div id="g2" class="panel">
+  <div class="chart-grid">
+    <div class="card"><h3>Pick Share</h3><div class="donut-wrap"><canvas id="g2d"></canvas></div></div>
+    <div class="card"><h3>Pick % vs. Score</h3><div class="chart-wrap" style="height:270px"><canvas id="g2s"></canvas></div></div>
+  </div>
+  <div class="card"><h3>All Players — Pick % (bar) · Score (label)</h3><div class="bar-list" id="g2b"></div></div>
+</div>
+
+<div id="g3" class="panel">
+  <div class="chart-grid">
+    <div class="card"><h3>Pick Share</h3><div class="donut-wrap"><canvas id="g3d"></canvas></div></div>
+    <div class="card"><h3>Pick % vs. Score</h3><div class="chart-wrap" style="height:270px"><canvas id="g3s"></canvas></div></div>
+  </div>
+  <div class="card"><h3>All Players — Pick % (bar) · Score (label)</h3><div class="bar-list" id="g3b"></div></div>
+</div>
+
+<div id="g4" class="panel">
+  <div class="chart-grid">
+    <div class="card"><h3>Pick Share</h3><div class="donut-wrap"><canvas id="g4d"></canvas></div></div>
+    <div class="card"><h3>Pick % vs. Score</h3><div class="chart-wrap" style="height:270px"><canvas id="g4s"></canvas></div></div>
+  </div>
+  <div class="card"><h3>All Players — Pick % (bar) · Score (label)</h3><div class="bar-list" id="g4b"></div></div>
+</div>
+
+<div id="g5" class="panel">
+  <div class="chart-grid">
+    <div class="card"><h3>Pick % vs. Score (top 15)</h3><div class="chart-wrap" style="height:270px"><canvas id="g5s"></canvas></div></div>
+    <div class="card"><h3>Top 11 Picks</h3><div class="bar-list" id="g5b"></div></div>
+  </div>
+  <div class="card"><h3>Full Group 5 — All 50 players</h3><div class="chart-wrap" style="height:500px"><canvas id="g5full"></canvas></div></div>
+</div>
+
+</div><!-- /content -->
+
+<script>
+const TOTAL = 2657;
+const WINNER = 'Rory McIlroy';
+
+const DATA = {
+  "Group 1": [
+    {player:"Scottie Scheffler",count:774,pct:29.1,score:-3},
+    {player:"Bryson DeChambeau",count:520,pct:19.6,score:4},
+    {player:"Ludvig Aberg",count:454,pct:17.1,score:0},
+    {player:"Jon Rahm",count:410,pct:15.4,score:4},
+    {player:"Xander Schauffele",count:319,pct:12.0,score:-2},
+    {player:"Rory McIlroy",count:180,pct:6.8,score:-5}
+  ],
+  "Group 2": [
+    {player:"Cameron Young",count:623,pct:23.4,score:1},
+    {player:"Tommy Fleetwood",count:539,pct:20.3,score:-1},
+    {player:"Matt Fitzpatrick",count:507,pct:19.1,score:2},
+    {player:"Justin Rose",count:358,pct:13.5,score:-3},
+    {player:"Patrick Reed",count:300,pct:11.3,score:-3},
+    {player:"Collin Morikawa",count:169,pct:6.4,score:2},
+    {player:"Robert MacIntyre",count:161,pct:6.1,score:1}
+  ],
+  "Group 3": [
+    {player:"Hideki Matsuyama",count:657,pct:24.7,score:0},
+    {player:"Min Woo Lee",count:399,pct:15.0,score:5},
+    {player:"Viktor Hovland",count:351,pct:13.2,score:3},
+    {player:"Chris Gotterup",count:327,pct:12.3,score:0},
+    {player:"Jordan Spieth",count:318,pct:12.0,score:-2},
+    {player:"Brooks Koepka",count:281,pct:10.6,score:1},
+    {player:"Si Woo Kim",count:202,pct:7.6,score:1},
+    {player:"Russell Henley",count:122,pct:4.6,score:1}
+  ],
+  "Group 4": [
+    {player:"Akshay Bhatia",count:833,pct:31.4,score:1},
+    {player:"Shane Lowry",count:358,pct:13.5,score:-2},
+    {player:"Adam Scott",count:300,pct:11.3,score:-1},
+    {player:"Justin Thomas",count:250,pct:9.4,score:-2},
+    {player:"Jason Day",count:214,pct:8.1,score:-3},
+    {player:"Sepp Straka",count:208,pct:7.8,score:-1},
+    {player:"Patrick Cantlay",count:181,pct:6.8,score:5},
+    {player:"Tyrrell Hatton",count:163,pct:6.1,score:1},
+    {player:"Jake Knapp",count:150,pct:5.6,score:1}
+  ],
+  "Group 5": [
+    {player:"Corey Conners",count:408,pct:15.4,score:3},
+    {player:"Jacob Bridgeman",count:320,pct:12.0,score:1},
+    {player:"J.J. Spaun",count:313,pct:11.8,score:2},
+    {player:"Nicolai Hojgaard",count:259,pct:9.7,score:1},
+    {player:"Sungjae Im",count:162,pct:6.1,score:4},
+    {player:"Max Homa",count:162,pct:6.1,score:0},
+    {player:"Gary Woodland",count:142,pct:5.3,score:-3},
+    {player:"Sam Burns",count:138,pct:5.2,score:-5},
+    {player:"Cameron Smith",count:138,pct:5.2,score:2},
+    {player:"Maverick McNealy",count:115,pct:4.3,score:4},
+    {player:"Harris English",count:110,pct:4.1,score:2},
+    {player:"Marco Penge",count:51,pct:1.9,score:5},
+    {player:"Daniel Berger",count:47,pct:1.8,score:3},
+    {player:"Wyndham Clark",count:44,pct:1.7,score:-1},
+    {player:"Ben Griffin",count:44,pct:1.7,score:1},
+    {player:"Brian Harman",count:28,pct:1.1,score:5},
+    {player:"Aaron Rai",count:16,pct:0.6,score:-1},
+    {player:"Ryan Fox",count:14,pct:0.5,score:5},
+    {player:"Kurt Kitayama",count:12,pct:0.5,score:-3},
+    {player:"Dustin Johnson",count:12,pct:0.5,score:1},
+    {player:"Sergio Garcia",count:11,pct:0.4,score:0},
+    {player:"Rasmus Hojgaard",count:11,pct:0.4,score:6},
+    {player:"Keegan Bradley",count:9,pct:0.3,score:0},
+    {player:"Casey Jarvis",count:9,pct:0.3,score:5},
+    {player:"Carlos Ortiz",count:8,pct:0.3,score:8},
+    {player:"Michael Kim",count:7,pct:0.3,score:3},
+    {player:"Nick Taylor",count:6,pct:0.2,score:-1},
+    {player:"Aldrich Potgieter",count:6,pct:0.2,score:12},
+    {player:"Max Greyserman",count:5,pct:0.2,score:7},
+    {player:"Haotong Li",count:5,pct:0.2,score:-1},
+    {player:"Ryan Gerard",count:5,pct:0.2,score:0},
+    {player:"Nicolas Echavarria",count:5,pct:0.2,score:7},
+    {player:"Bubba Watson",count:4,pct:0.2,score:4},
+    {player:"Matt McCarty",count:3,pct:0.1,score:0},
+    {player:"Harry Hall",count:3,pct:0.1,score:3},
+    {player:"John Keefer",count:3,pct:0.1,score:4},
+    {player:"Fred Couples",count:2,pct:0.1,score:-2},
+    {player:"Kristoffer Reitan",count:2,pct:0.1,score:0},
+    {player:"Andrew Novak",count:2,pct:0.1,score:2},
+    {player:"Brandon Holtz",count:2,pct:0.1,score:9},
+    {player:"Mason Howell",count:2,pct:0.1,score:5},
+    {player:"Samuel Stevens",count:2,pct:0.1,score:0},
+    {player:"Tom McKibbin",count:2,pct:0.1,score:3},
+    {player:"Jose Maria Olazabal",count:2,pct:0.1,score:2},
+    {player:"Zach Johnson",count:1,pct:0.0,score:1},
+    {player:"Sami Valimaki",count:1,pct:0.0,score:8},
+    {player:"Mike Weir",count:1,pct:0.0,score:6},
+    {player:"Brian Campbell",count:1,pct:0.0,score:-1},
+    {player:"Charl Schwartzel",count:1,pct:0.0,score:3},
+    {player:"Rasmus Neergaard-Petersen",count:1,pct:0.0,score:5}
+  ]
+};
+
+// ---- helpers ----
+function showTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.getAttribute('onclick').includes("'"+id+"'")) b.classList.add('active');
+  });
+}
+
+const GP = ['#4a9a4a','#5aaa5a','#3a8a3a','#6aba6a','#2a7a2a','#7aca7a','#1a6a1a','#8ada8a'];
+
+function playerColor(p) {
+  if (p.player === WINNER) return '#ffd700';
+  const medPct = 15;
+  const popular = p.pct >= medPct;
+  const good = p.score <= 0;
+  if (popular && good) return '#c9a84c';
+  if (!popular && good) return '#4aba4a';
+  if (popular && !good) return '#c04040';
+  return '#4a5a4a';
+}
+
+// ---- scatter ----
+function makeScatter(canvasId, players, showAllLabels) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const pts = players.map(p => ({
+    x: p.pct,
+    y: p.score,
+    label: p.player,
+    count: p.count,
+    color: playerColor(p),
+    r: p.player === WINNER ? 10 : Math.max(5, Math.min(16, p.pct * 0.8 + 4))
+  }));
+
+  new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: [{
+        data: pts.map(p => ({ x: p.x, y: p.y, r: p.r })),
+        backgroundColor: pts.map(p => p.color + 'cc'),
+        borderColor: pts.map(p => p.color),
+        borderWidth: pts.map(p => p.label === WINNER ? 3 : 1)
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const p = pts[ctx.dataIndex];
+              const sc = p.y === 0 ? 'E' : (p.y > 0 ? '+'+p.y : p.y);
+              return ` ${p.label}  |  ${p.x}% picked  |  Score: ${sc}  |  ${p.count} entries`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Pick %', color: '#5a7a5a', font: { family: 'Georgia' } },
+          ticks: { color: '#7a9a6a', callback: v => v + '%', font: { family: 'Georgia', size: 10 } },
+          grid: { color: '#162816' }
+        },
+        y: {
+          reverse: true,
+          title: { display: true, text: '← Better  Score  Worse →', color: '#5a7a5a', font: { family: 'Georgia' } },
+          ticks: {
+            color: '#7a9a6a', font: { family: 'Georgia', size: 10 },
+            callback: v => v === 0 ? 'E' : (v > 0 ? '+'+v : v)
+          },
+          grid: { color: '#162816' }
+        }
+      }
+    }
+  });
+}
+
+// ---- donut ----
+function makeDonut(canvasId, players) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const colors = players.map((p, i) => p.player === WINNER ? '#ffd700' : GP[i % GP.length]);
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: players.map(p => p.player),
+      datasets: [{ data: players.map(p => p.count), backgroundColor: colors, borderColor: '#0a1a0a', borderWidth: 3, hoverOffset: 8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#c8c0b0', font: { size: 10, family: 'Georgia' }, boxWidth: 10, padding: 8 } },
+        tooltip: { callbacks: { label: c => ` ${c.label}: ${c.parsed.toLocaleString()} picks (${(c.parsed/TOTAL*100).toFixed(1)}%)` } }
+      },
+      cutout: '52%'
+    }
+  });
+}
+
+// ---- bars ----
+function makeBars(containerId, players, maxPct) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  players.forEach((p, i) => {
+    const isWinner = p.player === WINNER;
+    const sc = p.score === 0 ? 'E' : (p.score > 0 ? '+'+p.score : ''+p.score);
+    const scClass = p.score < 0 ? 'good' : (p.score > 0 ? 'bad' : 'even');
+    let fillClass = 'f-green';
+    if (isWinner) fillClass = 'f-winner';
+    else if (i === 0 && p.pct >= 15 && p.score <= 0) fillClass = 'f-gold';
+    else if (p.score > 1) fillClass = 'f-red';
+    else if (i === 0) fillClass = 'f-gold';
+    const barW = Math.min(100, (p.pct / (maxPct * 1.05)) * 100);
+    const winBadge = isWinner ? '<span class="badge badge-winner">WINNER</span>' : '';
+    el.innerHTML += `
+      <div class="bar-row">
+        <div class="bar-label">${p.player}${winBadge}</div>
+        <div class="bar-track">
+          <div class="bar-fill ${fillClass}" style="width:${barW}%">
+            <span class="bar-pct">${p.pct}%</span>
+          </div>
+        </div>
+        <div class="bar-score ${scClass}">${sc}</div>
+      </div>`;
+  });
+}
+
+// ---- surprises ----
+function buildSurprises() {
+  const all = [];
+  Object.entries(DATA).forEach(([grp, players]) => {
+    const byPop   = [...players].sort((a,b) => b.pct - a.pct);
+    const byScore = [...players].sort((a,b) => a.score - b.score);
+    players.forEach(p => {
+      const popRank   = byPop.findIndex(x => x.player === p.player) + 1;
+      const scoreRank = byScore.findIndex(x => x.player === p.player) + 1;
+      const gap = scoreRank - popRank; // positive = underrated (scored better than expected)
+      all.push({ ...p, group: grp, popRank, scoreRank, gap });
+    });
+  });
+
+  // Traps: high pct + bad score — sort by (pick pct) * max(0, score)
+  const traps = all
+    .filter(p => p.score > 0 && p.pct > 3)
+    .sort((a,b) => (b.pct * b.score) - (a.pct * a.score))
+    .slice(0, 7);
+
+  // Gems: low-ish pick% but good score — sort by (low_pct) * (-score)
+  const gems = all
+    .filter(p => p.score < 0)
+    .sort((a,b) => (-a.score / Math.max(0.1, a.pct)) - (-b.score / Math.max(0.1, b.pct)))
+    .slice(0, 7);
+
+  const trapEl = document.getElementById('trapList');
+  traps.forEach((p, i) => {
+    const sc = '+' + p.score;
+    const isWinner = p.player === WINNER;
+    trapEl.innerHTML += `
+      <div class="surprise-item trap">
+        <div class="si-rank">${i+1}</div>
+        <div class="si-info">
+          <div class="si-name">${p.player}${isWinner?'<span class="badge badge-winner">WINNER</span>':''}
+            <span class="badge badge-group">${p.group}</span></div>
+          <div class="si-meta">
+            <span class="picked">${p.pct}% of entries picked them</span>
+            <span class="score-bad">Finished ${sc}</span>
+          </div>
+        </div>
+        <div class="si-gap"><div class="arrow down">↓</div>${p.pct}% → +${p.score}</div>
+      </div>`;
+  });
+
+  const gemEl = document.getElementById('gemList');
+  gems.forEach((p, i) => {
+    const sc = p.score < 0 ? ''+p.score : (p.score === 0 ? 'E' : '+'+p.score);
+    const isWinner = p.player === WINNER;
+    gemEl.innerHTML += `
+      <div class="surprise-item gem">
+        <div class="si-rank">${i+1}</div>
+        <div class="si-info">
+          <div class="si-name">${p.player}${isWinner?'<span class="badge badge-winner">WINNER</span>':''}
+            <span class="badge badge-group">${p.group}</span></div>
+          <div class="si-meta">
+            <span class="picked">${p.pct}% of entries picked them</span>
+            <span class="score-good">Finished ${sc}</span>
+          </div>
+        </div>
+        <div class="si-gap"><div class="arrow up">↑</div>${p.pct}% → ${sc}</div>
+      </div>`;
+  });
+}
+
+// ---- gap bar chart ----
+function buildGapChart() {
+  const labels = [], gaps = [], colors = [];
+
+  ['Group 1','Group 2','Group 3','Group 4'].forEach(grp => {
+    const players = DATA[grp];
+    const byPop   = [...players].sort((a,b) => b.pct - a.pct);
+    const byScore = [...players].sort((a,b) => a.score - b.score);
+    players.forEach(p => {
+      const popRank   = byPop.findIndex(x => x.player === p.player) + 1;
+      const scoreRank = byScore.findIndex(x => x.player === p.player) + 1;
+      const gap = scoreRank - popRank;
+      labels.push(p.player.split(' ').slice(-1)[0] + ' ('+grp.replace('Group ','G')+')');
+      gaps.push(gap);
+      colors.push(gap > 0 ? '#4aba4a99' : gap < 0 ? '#c0404099' : '#4a5a4a99');
+    });
+  });
+
+  const ctx = document.getElementById('gapChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Score rank − Popularity rank',
+        data: gaps,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('99','ff')),
+        borderWidth: 1,
+        borderRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.parsed.y > 0
+              ? ` Underrated by ${ctx.parsed.y} spots (performed better than picked)`
+              : ctx.parsed.y < 0
+              ? ` Overrated by ${Math.abs(ctx.parsed.y)} spots (picked higher than performed)`
+              : ' Picked exactly where they finished'
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#7a9a6a', font: { family: 'Georgia', size: 9 } }, grid: { color: '#162816' } },
+        y: {
+          ticks: { color: '#7a9a6a', font: { family: 'Georgia', size: 10 } },
+          grid: { color: '#162816' },
+          title: { display: true, text: '← Overrated   Rank Gap   Underrated →', color: '#5a7a5a', font: { family: 'Georgia' } }
+        }
+      }
+    }
+  });
+}
+
+// ---- G5 full horizontal ----
+function buildG5Full() {
+  const players = DATA['Group 5'];
+  const ctx = document.getElementById('g5full').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: players.map(p => p.player),
+      datasets: [{
+        label: 'Picks',
+        data: players.map(p => p.count),
+        backgroundColor: players.map(p => p.score < 0 ? '#4aba4a88' : p.score > 2 ? '#c0404088' : '#2a5a2a88'),
+        borderRadius: 2
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ` ${c.parsed.x.toLocaleString()} picks (${(c.parsed.x/TOTAL*100).toFixed(1)}%) · Score: ${DATA['Group 5'][c.dataIndex].score > 0 ? '+'+DATA['Group 5'][c.dataIndex].score : DATA['Group 5'][c.dataIndex].score}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#7a9a6a', font: { family: 'Georgia', size: 10 } }, grid: { color: '#162816' } },
+        y: { ticks: { color: '#c8c0b0', font: { family: 'Georgia', size: 9 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ---- init ----
+buildSurprises();
+buildGapChart();
+buildG5Full();
+
+// Overview scatter (all groups combined)
+const allPlayers = [];
+Object.entries(DATA).forEach(([grp, players]) => players.forEach(p => allPlayers.push({...p, grp})));
+makeScatter('scatterAll', allPlayers);
+
+// Group 1
+makeDonut('g1d', DATA['Group 1']);
+makeScatter('g1s', DATA['Group 1']);
+makeBars('g1b', DATA['Group 1'], 29.1);
+
+// Group 2
+makeDonut('g2d', DATA['Group 2']);
+makeScatter('g2s', DATA['Group 2']);
+makeBars('g2b', DATA['Group 2'], 23.4);
+
+// Group 3
+makeDonut('g3d', DATA['Group 3']);
+makeScatter('g3s', DATA['Group 3']);
+makeBars('g3b', DATA['Group 3'], 24.7);
+
+// Group 4
+makeDonut('g4d', DATA['Group 4']);
+makeScatter('g4s', DATA['Group 4']);
+makeBars('g4b', DATA['Group 4'], 31.4);
+
+// Group 5 scatter (top 15)
+makeScatter('g5s', DATA['Group 5'].slice(0,15));
+makeBars('g5b', DATA['Group 5'].slice(0,11), 15.4);
+</script>
+</body>
+</html>
